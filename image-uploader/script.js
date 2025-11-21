@@ -2,64 +2,129 @@ import { Client } from "https://cdn.jsdelivr.net/npm/@gradio/client/dist/index.m
 
 document.addEventListener("DOMContentLoaded", () => {
 
-  const HF_SPACE = "Hope-and-Despair/Stable-Audio-freestyle-new-experiments";
+  // ----------------------------------------------
+  // FAKE MODE
+  // ----------------------------------------------
+  const FAKE_MODE = true;
 
-  // Screen switching helper
-  const show = (id) => {
-    document.querySelectorAll(".screen").forEach((s) => s.classList.remove("active"));
-    document.getElementById(id).classList.add("active");
-  };
+  // These get converted into URLs automatically by your system
+  const FAKE_AUDIO_URL = "/mnt/data/0014-serpentine-ascent-through-mist-20251121-224139.wav";
+  const FAKE_METADATA_URL = "/mnt/data/0014-serpentine-ascent-through-mist-20251121-224139.txt";
+  const FAKE_IMAGE_URL = "/mnt/data/0014-serpentine-ascent-through-mist-20251121-224139.png";
 
-  // Elements
+  // ----------------------------------------------
+  // DOM elements
+  // ----------------------------------------------
+  const screenUpload = document.getElementById("screen-upload");
+  const screenLoading = document.getElementById("screen-loading");
+  const screenSuccess = document.getElementById("screen-success");
+  const screenError = document.getElementById("screen-error");
+
   const fileInput = document.getElementById("file-input");
   const btnGenerate = document.getElementById("btn-generate");
-  const audioPlayer = document.getElementById("audio-player");
-  const metadataLink = document.getElementById("metadata-link");
-  const errorMessage = document.getElementById("error-message");
   const btnBack = document.getElementById("btn-back");
   const btnErrorBack = document.getElementById("btn-error-back");
 
-  // Generate Audio Button
+  const audioPlayer = document.getElementById("audio-player");
+  const metadataLink = document.getElementById("metadata-link");
+  const errorMessage = document.getElementById("error-message");
+
+  // (Optional) if you want to show output image, add an <img> in HTML:
+  // <img id="fake-output-image" />
+  const fakeImageElement = document.getElementById("fake-output-image");
+
+  // ----------------------------------------------
+  // Helper for switching screens
+  // ----------------------------------------------
+  function show(screen) {
+    screenUpload.classList.remove("active");
+    screenLoading.classList.remove("active");
+    screenSuccess.classList.remove("active");
+    screenError.classList.remove("active");
+    screen.classList.add("active");
+  }
+
+  // ----------------------------------------------
+  // Main Generate Button
+  // ----------------------------------------------
   btnGenerate.addEventListener("click", async () => {
+
     if (!fileInput.files.length) {
-      alert("Please select an image first.");
+      alert("Please upload an image first.");
       return;
     }
 
-    show("screen-loading");
+    show(screenLoading);
+
+    // ----------------------------
+    // FAKE MODE SHORTCUT
+    // ----------------------------
+    if (FAKE_MODE) {
+      return runFakePipeline();
+    }
+
+    // ----------------------------
+    // REAL HUGGING FACE MODE
+    // (turned off until your Space is generating again)
+    // ----------------------------
 
     try {
-      const file = fileInput.files[0];
+      const HF_SPACE = "Hope-and-Despair/Stable-Audio-freestyle-new-experiments";
       const client = await Client.connect(HF_SPACE);
+      const file = fileInput.files[0];
 
       const result = await client.predict("/pipeline_from_image", {
-        image: file
+        image: file,
       });
 
       const [audioUrl, metadataUrl] = result.data;
 
-      // Assign outputs
       audioPlayer.src = audioUrl;
       metadataLink.href = metadataUrl;
 
-      show("screen-success");
+      show(screenSuccess);
 
     } catch (err) {
-      console.error("Error:", err);
-
-      const msg =
-        err?.message ||
-        err?.title ||
-        err?.detail ||
-        "Something went wrong. Please try again.";
-
-      errorMessage.textContent = msg;
-
-      show("screen-error");
+      errorMessage.textContent = err?.message || "Something went wrong. Try again.";
+      show(screenError);
     }
   });
 
-  // Buttons to return to upload screen
-  btnBack.addEventListener("click", () => show("screen-upload"));
-  btnErrorBack.addEventListener("click", () => show("screen-upload"));
+  // ----------------------------------------------
+  // FAKE PIPELINE (works instantly)
+  // ----------------------------------------------
+  async function runFakePipeline() {
+    console.log("🎭 Fake mode active — simulating generation…");
+
+    // delay to simulate “processing” animation
+    await new Promise((res) => setTimeout(res, 1800));
+
+    try {
+      // AUDIO
+      audioPlayer.src = FAKE_AUDIO_URL;
+
+      // METADATA
+      metadataLink.href = FAKE_METADATA_URL;
+      metadataLink.download = "metadata.txt";
+
+      // (Optional) IMAGE PREVIEW
+      if (fakeImageElement) {
+        fakeImageElement.src = FAKE_IMAGE_URL;
+      }
+
+      show(screenSuccess);
+
+    } catch (err) {
+      console.error(err);
+      errorMessage.textContent = "Fake data failed to load (unlikely).";
+      show(screenError);
+    }
+  }
+
+  // ----------------------------------------------
+  // Back Buttons
+  // ----------------------------------------------
+  btnBack.addEventListener("click", () => show(screenUpload));
+  btnErrorBack.addEventListener("click", () => show(screenUpload));
+
 });
