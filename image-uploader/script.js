@@ -1,59 +1,65 @@
 import { Client } from "https://cdn.jsdelivr.net/npm/@gradio/client/dist/index.min.js";
 
-const HF_SPACE = "Hope-and-Despair/Stable-Audio-freestyle-new-experiments";
+document.addEventListener("DOMContentLoaded", () => {
 
-// Screen controls
-const show = id => {
-  document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
-  document.getElementById(id).classList.add("active");
-};
+  const HF_SPACE = "Hope-and-Despair/Stable-Audio-freestyle-new-experiments";
 
-// Elements
-const fileInput = document.getElementById("file-input");
-const btnGenerate = document.getElementById("btn-generate");
-const audioPlayer = document.getElementById("audio-player");
-const metadataLink = document.getElementById("metadata-link");
-const errorMessage = document.getElementById("error-message");
-const btnBack = document.getElementById("btn-back");
-const btnErrorBack = document.getElementById("btn-error-back");
+  // Screen switching helper
+  const show = (id) => {
+    document.querySelectorAll(".screen").forEach((s) => s.classList.remove("active"));
+    document.getElementById(id).classList.add("active");
+  };
 
-// Upload → Generate
-btnGenerate.onclick = async () => {
-  if (!fileInput.files.length) {
-    alert("Please select an image first.");
-    return;
-  }
+  // Elements
+  const fileInput = document.getElementById("file-input");
+  const btnGenerate = document.getElementById("btn-generate");
+  const audioPlayer = document.getElementById("audio-player");
+  const metadataLink = document.getElementById("metadata-link");
+  const errorMessage = document.getElementById("error-message");
+  const btnBack = document.getElementById("btn-back");
+  const btnErrorBack = document.getElementById("btn-error-back");
 
-  show("screen-loading");
+  // Generate Audio Button
+  btnGenerate.addEventListener("click", async () => {
+    if (!fileInput.files.length) {
+      alert("Please select an image first.");
+      return;
+    }
 
-  try {
-    const file = fileInput.files[0];
+    show("screen-loading");
 
-    const client = await Client.connect(HF_SPACE);
+    try {
+      const file = fileInput.files[0];
+      const client = await Client.connect(HF_SPACE);
 
-    // Run the pipeline
-    const result = await client.predict("/pipeline_from_image", {
-      image: file
-    });
+      const result = await client.predict("/pipeline_from_image", {
+        image: file
+      });
 
-    const [audioUrl, metadataUrl] = result.data;
+      const [audioUrl, metadataUrl] = result.data;
 
-    // Populate success screen
-    audioPlayer.src = audioUrl;
-    metadataLink.href = metadataUrl;
+      // Assign outputs
+      audioPlayer.src = audioUrl;
+      metadataLink.href = metadataUrl;
 
-    show("screen-success");
+      show("screen-success");
 
-  } catch (err) {
-    console.error(err);
-    errorMessage.textContent =
-      err?.message ||
-      err?.title ||
-      "Something went wrong. Please try again.";
+    } catch (err) {
+      console.error("Error:", err);
 
-    show("screen-error");
-  }
-};
+      const msg =
+        err?.message ||
+        err?.title ||
+        err?.detail ||
+        "Something went wrong. Please try again.";
 
-btnBack.onclick = () => show("screen-upload");
-btnErrorBack.onclick = () => show("screen-upload");
+      errorMessage.textContent = msg;
+
+      show("screen-error");
+    }
+  });
+
+  // Buttons to return to upload screen
+  btnBack.addEventListener("click", () => show("screen-upload"));
+  btnErrorBack.addEventListener("click", () => show("screen-upload"));
+});
