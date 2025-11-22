@@ -87,7 +87,10 @@ document.addEventListener("DOMContentLoaded", () => {
       const HF_SPACE = "Hope-and-Despair/Stable-Audio-freestyle-new-experiments";
       const client = await Client.connect(HF_SPACE);
 
-      const file = fileInput.files[0];
+      const file = fileInput.files?.[0];
+      if (!(file instanceof File) || !file.size) {
+        throw new Error("No image file selected or file is empty.");
+      }
       const uploadedImage = await client.upload(file); // ensure the file is available to the Space
 
       const result = await client.predict("/pipeline_from_image", {
@@ -98,6 +101,10 @@ document.addEventListener("DOMContentLoaded", () => {
       const audioUrl = toUrl(audioResult);
       const metadataUrl = toUrl(metadataResult);
 
+      if (!audioUrl || !metadataUrl) {
+        throw new Error("API did not return audio/metadata URLs.");
+      }
+
       // Set outputs
       outputImage.src = URL.createObjectURL(file);
       audioPlayer.src = audioUrl;
@@ -107,7 +114,13 @@ document.addEventListener("DOMContentLoaded", () => {
       show(screenSuccess);
 
     } catch (err) {
-      errorMessage.textContent = err?.message || "Something went wrong. Try again.";
+      const friendly =
+        err?.response?.error ||
+        err?.error ||
+        err?.message ||
+        "Something went wrong. Try again.";
+      console.error("Generation error:", err);
+      errorMessage.textContent = friendly;
       show(screenError);
     }
   });
