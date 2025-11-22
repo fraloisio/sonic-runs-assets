@@ -1,5 +1,5 @@
 import { Client } from "https://cdn.jsdelivr.net/npm/@gradio/client/dist/index.min.js";
-
+// Version 0.1 completed on Jun 12, 2024
 // Toggle state stored here
 let FAKE_MODE = false;
 
