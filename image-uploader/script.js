@@ -66,11 +66,9 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // Fake mode
-  async function runFakeMode() {
-    /* Simulate delay */
+  async function runFakeMode(file) {
     await new Promise(res => setTimeout(res, 1200));
 
-    const file = fileInput.files[0];
     outputImage.src = URL.createObjectURL(file);
     titleText.textContent = "Generated Soundscape";
 
@@ -81,20 +79,24 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   btnGenerate.addEventListener("click", async () => {
-    if (!fileInput.files.length) {
+    const selectedFile = fileInput.files?.[0];
+
+    if (!selectedFile) {
       alert("Please choose a file");
       return;
     }
 
+    // Store the file BEFORE screen change
+    const file = selectedFile;
+
     show(screenLoading);
 
-    if (FAKE_MODE) return runFakeMode();
+    if (FAKE_MODE) return runFakeMode(file);
 
     try {
       const HF_SPACE = "Hope-and-Despair/Stable-Audio-freestyle-new-experiments";
       const client = await Client.connect(HF_SPACE);
 
-      const file = fileInput.files[0];
       const uploaded = await client.upload(file);
 
       const result = await client.predict("/pipeline_from_image", {
@@ -114,7 +116,6 @@ document.addEventListener("DOMContentLoaded", () => {
       titleText.textContent = parsedTitle;
 
       show(screenSuccess);
-
     } catch (err) {
       errorMessage.textContent = err?.message || "Unknown error";
       show(screenError);
