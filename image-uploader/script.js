@@ -66,6 +66,10 @@ document.addEventListener("DOMContentLoaded", () => {
     if (x.data?.path) return x.data.path;
     return "";
   }
+  function getFilename(file) {
+    return file.name.replace(/\.[^/.]+$/, ""); // remove extension
+}
+
 // ----------------------------------------------
 // MAIN BUTTON
 // ----------------------------------------------
@@ -100,7 +104,7 @@ btnGenerate.addEventListener("click", async () => {
     audioPlayer.src = toUrl(audioRes);
     metadataLink.href = toUrl(metaRes);
     outputImage.src = URL.createObjectURL(file);
-
+    document.getElementById("title-text").textContent = getFilename(file);
     show(screenSuccess);
 
   } catch (err) {
@@ -125,6 +129,7 @@ async function runFake() {
   outputImage.src = URL.createObjectURL(file);
   audioPlayer.src = FAKE_AUDIO;
   metadataLink.href = FAKE_METADATA;
+  document.getElementById("title-text").textContent = getFilename(file);
 
   show(screenSuccess);   // ← IMPORTANT: SWITCH SCREEN
 }
