@@ -3,14 +3,28 @@ import { Client } from "https://cdn.jsdelivr.net/npm/@gradio/client/dist/index.m
 document.addEventListener("DOMContentLoaded", () => {
 
   // ----------------------------------------------
-  // Fake mode toggle
+  // FAKE MODE: dynamic toggle
   // ----------------------------------------------
-  const FAKE_MODE = false;
+  let FAKE_MODE = false;
+
+  const fakeToggle = document.getElementById("fake-toggle");
+
+  // restore last choice
+  FAKE_MODE = localStorage.getItem("FAKE_MODE") === "true";
+  fakeToggle.checked = FAKE_MODE;
+
+  // update on click
+  fakeToggle.addEventListener("change", () => {
+    FAKE_MODE = fakeToggle.checked;
+    localStorage.setItem("FAKE_MODE", FAKE_MODE);
+  });
+
+  // fake assets
   const FAKE_AUDIO = "fake/fake-audio.mp3";
   const FAKE_METADATA = "fake/fake-metadata.txt";
 
   // ----------------------------------------------
-  // DOM references
+  // DOM ELEMENTS
   // ----------------------------------------------
   const screenUpload = document.getElementById("screen-upload");
   const screenLoading = document.getElementById("screen-loading");
@@ -28,7 +42,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const errorMessage = document.getElementById("error-message");
 
   // ----------------------------------------------
-  // Screen switching helper
+  // SCREEN SWITCHER
   // ----------------------------------------------
   function show(screen) {
     screenUpload.classList.remove("active");
@@ -39,125 +53,81 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // ----------------------------------------------
-  // Convert Gradio output → usable URL
+  // SAFE URL NORMALIZER
   // ----------------------------------------------
   function toUrl(x) {
     if (!x) return "";
-
     if (typeof x === "string") return x;
-    if (x.url && typeof x.url === "string") return x.url;
-    if (x.path && typeof x.path === "string") return x.path;
-    if (x.name && typeof x.name === "string") return x.name;
-
+    if (x.url) return x.url;
+    if (x.path) return x.path;
+    if (x.name) return x.name;
     if (x.data instanceof Blob) return URL.createObjectURL(x.data);
     if (x.data?.url) return x.data.url;
     if (x.data?.path) return x.data.path;
-
     return "";
   }
 
   // ----------------------------------------------
-  // MAIN: Generate Audio
+  // MAIN BUTTON
   // ----------------------------------------------
   btnGenerate.addEventListener("click", async () => {
 
-    const file = fileInput.files[0];
-
-    if (!file) {
+    if (!fileInput.files.length) {
       alert("Please upload an image first.");
       return;
     }
 
     show(screenLoading);
 
-    if (FAKE_MODE) return runFakeMode(file);
+    // FAKE MODE
+    if (FAKE_MODE) return runFake();
 
+    // REAL MODE
     try {
-      const client = await Client.connect(
-        "Hope-and-Despair/Stable-Audio-freestyle-new-experiments"
-      );
+      const HF_SPACE = "Hope-and-Despair/Stable-Audio-freestyle-new-experiments";
+      const client = await Client.connect(HF_SPACE);
 
-   const job = await client.submit(
-  "/pipeline_from_image",
-  { image: file },
-  null   // optional event handler
-);
+      const file = fileInput.files[0];
+      const uploaded = await client.upload(file);
 
-// subscribe to events
-for await (const event of job) {
-  if (event.type === "status") {
-    console.log("STATUS:", event.stage, event.message);
+      const result = await client.predict("/pipeline_from_image", {
+        image: uploaded,
+      });
 
-    if (event.queue_position !== undefined) {
-      loadingText.textContent = `In queue… position ${event.queue_position}`;
-    }
-  }
+      const [audioRes, metaRes] = result.data;
 
-  if (event.type === "progress") {
-    console.log("PROGRESS:", event);
-    loadingText.textContent = `Generating… ${Math.round(event.progress * 100)}%`;
-  }
-
-    if (event.type === "data") {
-      const [audioResult, metadataResult] = event.data;
-      const audioUrl = toUrl(audioResult);
-      const metadataUrl = toUrl(metadataResult);
-
+      audioPlayer.src = toUrl(audioRes);
+      metadataLink.href = toUrl(metaRes);
       outputImage.src = URL.createObjectURL(file);
-      audioPlayer.src = audioUrl;
-      audioPlayer.load();
-      metadataLink.href = metadataUrl;
-
-      show(screenSuccess);
-    }};
-
-      if (!result || !result.data || result.data.length < 2) {
-        console.error("BAD RESULT:", result);
-        throw new Error("Invalid response from server.");
-      }
-
-      const audioUrl = toUrl(result.data[0]);
-      const metadataUrl = toUrl(result.data[1]);
-
-      if (!audioUrl || !metadataUrl) {
-        console.error("BAD URL PARSE:", result);
-        throw new Error("Missing audio or metadata.");
-      }
-
-      outputImage.src = URL.createObjectURL(file);
-      audioPlayer.src = audioUrl;
-      audioPlayer.load();
-      metadataLink.href = metadataUrl;
 
       show(screenSuccess);
 
     } catch (err) {
-      console.error("GENERATION ERROR:", err);
-      errorMessage.textContent =
-        err?.message || "Something went wrong. Try again.";
+      console.error(err);
+      errorMessage.textContent = err?.message || "Something went wrong.";
       show(screenError);
     }
   });
 
   // ----------------------------------------------
-  // FAKE MODE
+  // FAKE MODE PIPELINE
   // ----------------------------------------------
-  async function runFakeMode(file) {
-    await new Promise((r) => setTimeout(r, 800));
-
+  async function runFake() {
+    await new Promise(r => setTimeout(r, 800));
+    const file = fileInput.files[0];
     outputImage.src = URL.createObjectURL(file);
     audioPlayer.src = FAKE_AUDIO;
     metadataLink.href = FAKE_METADATA;
-
     show(screenSuccess);
   }
 
   // ----------------------------------------------
-  // BACK BUTTONS
+  // RESET
   // ----------------------------------------------
   function resetUi() {
     outputImage.src = "";
     audioPlayer.src = "";
+    audioPlayer.load();
     metadataLink.removeAttribute("href");
     fileInput.value = "";
     errorMessage.textContent = "";
