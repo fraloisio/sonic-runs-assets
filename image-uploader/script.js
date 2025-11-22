@@ -41,6 +41,31 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // ----------------------------------------------
+  // Helper: normalize API outputs to usable URLs
+  // ----------------------------------------------
+  function toUrl(output) {
+    if (!output) return "";
+    if (typeof output === "string") return output;
+
+    // Common shapes returned by Gradio client
+    if (output.url) return output.url;
+    if (output.path) return output.path;
+    if (output.name) return output.name;
+    if (output.orig_name) return output.orig_name;
+
+    // Blob/File
+    if (output instanceof Blob || output instanceof File) {
+      return URL.createObjectURL(output);
+    }
+
+    if (output.data && (output.data instanceof Blob)) {
+      return URL.createObjectURL(output.data);
+    }
+
+    return "";
+  }
+
+  // ----------------------------------------------
   // Main click: GENERATE AUDIO
   // ----------------------------------------------
   btnGenerate.addEventListener("click", async () => {
@@ -70,8 +95,8 @@ document.addEventListener("DOMContentLoaded", () => {
       });
 
       const [audioResult, metadataResult] = result.data;
-      const audioUrl = audioResult?.url ?? audioResult;
-      const metadataUrl = metadataResult?.url ?? metadataResult;
+      const audioUrl = toUrl(audioResult);
+      const metadataUrl = toUrl(metadataResult);
 
       // Set outputs
       outputImage.src = URL.createObjectURL(file);
