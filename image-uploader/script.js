@@ -103,12 +103,12 @@ document.addEventListener("DOMContentLoaded", () => {
       const HF_SPACE = "Hope-and-Despair/Stable-Audio-freestyle-new-experiments";
       const client = await Client.connect(HF_SPACE);
 
-      const uploaded = await client.upload([file]);
+      if (!(file instanceof File) || typeof file.size !== "number") {
+        throw new Error("Invalid file selected.");
+      }
 
-      if (!uploaded) throw new Error("Upload failed: no file returned from client.upload");
-
-      // Use positional array to avoid param-name mismatches with the Space API
-      const result = await client.predict("/pipeline_from_image", [uploaded]);
+      // Let predict handle the upload; send positional input to avoid key mismatches
+      const result = await client.predict("/pipeline_from_image", [file]);
 
       const [audioRes, metaRes] = result.data;
 
