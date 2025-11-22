@@ -3,23 +3,21 @@ import { Client } from "https://cdn.jsdelivr.net/npm/@gradio/client/dist/index.m
 document.addEventListener("DOMContentLoaded", () => {
 
   // ----------------------------------------------
-  // FAKE MODE: dynamic toggle
+  // Fake Mode Toggle
   // ----------------------------------------------
   let FAKE_MODE = false;
-
   const fakeToggle = document.getElementById("fake-toggle");
 
-  // restore last choice
+  // restore
   FAKE_MODE = localStorage.getItem("FAKE_MODE") === "true";
   fakeToggle.checked = FAKE_MODE;
 
-  // update on click
+  // save on change
   fakeToggle.addEventListener("change", () => {
     FAKE_MODE = fakeToggle.checked;
     localStorage.setItem("FAKE_MODE", FAKE_MODE);
   });
 
-  // fake assets
   const FAKE_AUDIO = "fake/fake-audio.mp3";
   const FAKE_METADATA = "fake/fake-metadata.txt";
 
@@ -39,21 +37,20 @@ document.addEventListener("DOMContentLoaded", () => {
   const audioPlayer = document.getElementById("audio-player");
   const metadataLink = document.getElementById("metadata-link");
   const outputImage = document.getElementById("output-image");
+  const titleText = document.getElementById("title-text");
   const errorMessage = document.getElementById("error-message");
 
   // ----------------------------------------------
-  // SCREEN SWITCHER
+  // UI helper
   // ----------------------------------------------
   function show(screen) {
-    screenUpload.classList.remove("active");
-    screenLoading.classList.remove("active");
-    screenSuccess.classList.remove("active");
-    screenError.classList.remove("active");
+    [screenUpload, screenLoading, screenSuccess, screenError]
+      .forEach(s => s.classList.remove("active"));
     screen.classList.add("active");
   }
 
   // ----------------------------------------------
-  // SAFE URL NORMALIZER
+  // Convert Gradio output → URL
   // ----------------------------------------------
   function toUrl(x) {
     if (!x) return "";
@@ -66,77 +63,76 @@ document.addEventListener("DOMContentLoaded", () => {
     if (x.data?.path) return x.data.path;
     return "";
   }
-  function getFilename(file) {
-    return file.name.replace(/\.[^/.]+$/, ""); // remove extension
-}
-
-// ----------------------------------------------
-// MAIN BUTTON
-// ----------------------------------------------
-btnGenerate.addEventListener("click", async () => {
-
-  if (!fileInput.files.length) {
-    alert("Please upload an image first.");
-    return;
-  }
-
-  show(screenLoading);
-
-  // --- FAKE MODE ACTIVE ---
-  if (FAKE_MODE) {
-    return runFake();    // ← STOP EVERYTHING ELSE
-  }
-
-  // --- REAL API MODE ---
-  try {
-    const HF_SPACE = "Hope-and-Despair/Stable-Audio-freestyle-new-experiments";
-    const client = await Client.connect(HF_SPACE);
-
-    const file = fileInput.files[0];
-    const uploaded = await client.upload(file);
-
-    const result = await client.predict("/pipeline_from_image", {
-      image: uploaded,
-    });
-
-    const [audioRes, metaRes] = result.data;
-
-    audioPlayer.src = toUrl(audioRes);
-    metadataLink.href = toUrl(metaRes);
-    outputImage.src = URL.createObjectURL(file);
-    document.getElementById("title-text").textContent = getFilename(file);
-    show(screenSuccess);
-
-  } catch (err) {
-    console.error(err);
-    errorMessage.textContent = err?.message || "Something went wrong.";
-    show(screenError);
-  }
-});
-
-
-// ----------------------------------------------
-// FAKE MODE PIPELINE  (FIXED VERSION)
-// ----------------------------------------------
-async function runFake() {
-
-  // a short delay so the spinner shows briefly (optional)
-  await new Promise(r => setTimeout(r, 600));
-
-  const file = fileInput.files[0];
-
-  // Set fake outputs
-  outputImage.src = URL.createObjectURL(file);
-  audioPlayer.src = FAKE_AUDIO;
-  metadataLink.href = FAKE_METADATA;
-  document.getElementById("title-text").textContent = getFilename(file);
-
-  show(screenSuccess);   // ← IMPORTANT: SWITCH SCREEN
-}
-
 
   // ----------------------------------------------
-  // RESET
+  // Extract filename
+  // ----------------------------------------------
+  function getFilename(file) {
+    if (!file || !file.name) return "Untitled";
+    return file.name.replace(/\.[^/.]+$/, ""); // remove extension
+  }
+
+  // ----------------------------------------------
+  // REAL GENERATION
+  // ----------------------------------------------
+  btnGenerate.addEventListener("click", async () => {
+
+    if (!fileInput.files.length) {
+      alert("Please upload an image first.");
+      return;
+    }
+
+    show(screenLoading);
+
+    const file = fileInput.files[0];
+
+    // ----- FAKE MODE -----
+    if (FAKE_MODE) {
+      return runFake(file);
+    }
+
+    // ----- REAL MODE -----
+    try {
+      const client = await Client.connect("Hope-and-Despair/Stable-Audio-freestyle-new-experiments");
+
+      const uploaded = await client.upload(file);
+
+      const result = await client.predict("/pipeline_from_image", {
+        image: uploaded
+      });
+
+      const [audioRes, metaRes] = result.data;
+
+      audioPlayer.src = toUrl(audioRes);
+      metadataLink.href = toUrl(metaRes);
+      outputImage.src = URL.createObjectURL(file);
+      titleText.textContent = getFilename(file);
+
+      show(screenSuccess);
+
+    } catch (err) {
+      console.error(err);
+      errorMessage.textContent = err?.message || "Something went wrong.";
+      show(screenError);
+    }
+  });
+
+  // ----------------------------------------------
+  // FAKE PIPELINE
+  // ----------------------------------------------
+  async function runFake(file) {
+    await new Promise(r => setTimeout(r, 500)); // tiny delay
+
+    outputImage.src = URL.createObjectURL(file);
+    audioPlayer.src = FAKE_AUDIO;
+    metadataLink.href = FAKE_METADATA;
+    titleText.textContent = getFilename(file);
+
+    show(screenSuccess);
+  }
+
+  // ----------------------------------------------
+  // Reset UI
   // ----------------------------------------------
   function resetUi() {
     outputImage.src = "";
@@ -144,17 +140,11 @@ async function runFake() {
     audioPlayer.load();
     metadataLink.removeAttribute("href");
     fileInput.value = "";
+    titleText.textContent = "";
     errorMessage.textContent = "";
   }
 
-  btnBack.addEventListener("click", () => {
-    resetUi();
-    show(screenUpload);
-  });
-
-  btnErrorBack.addEventListener("click", () => {
-    resetUi();
-    show(screenUpload);
-  });
+  btnBack.addEventListener("click", () => { resetUi(); show(screenUpload); });
+  btnErrorBack.addEventListener("click", () => { resetUi(); show(screenUpload); });
 
 });

@@ -6,7 +6,6 @@
   <title>Hope & Despair – Audio Generator</title>
 
   <!-- Space Grotesk -->
-  <link rel="icon" href="data:,">
   <link rel="preconnect" href="https://fonts.gstatic.com">
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;700&display=swap" rel="stylesheet">
 
@@ -26,17 +25,26 @@
   <!-- Loading Screen -->
   <div id="screen-loading" class="screen">
     <div class="loader"></div>
-    <p id="loading-text">Sending your image into the bubble network…  
-       Its memory is dissolving, reshaping, waiting.</p>
+    <p id="loading-text">
+      Sending your image into the bubble network…  
+      Its memory is dissolving, reshaping, waiting.
+    </p>
   </div>
 
   <!-- Success Screen -->
   <div id="screen-success" class="screen">
-    <img id="output-image" src="" style="max-width: 80%; margin-top: 20px;" />
+    <img id="output-image" src="" />
     <h2 id="title-text"></h2>
+
     <audio id="audio-player" controls></audio>
+
     <button id="btn-back">Generate Another</button>
-    <a id="metadata-link" href="#" download>Download Metadata</a>    
+    <a id="metadata-link" href="#" download>Download metadata</a>
+
+    <!-- Fake toggle -->
+    <div id="fake-toggle-container">
+      <label><input type="checkbox" id="fake-toggle"> Use Fake Mode (debug)</label>
+    </div>
   </div>
 
   <!-- Error Screen -->
@@ -45,13 +53,6 @@
     <p id="error-message"></p>
     <button id="btn-error-back">Try Again</button>
   </div>
-<!-- Fake Mode Toggle -->
-<div id="fake-toggle-container">
-  <label>
-    <input type="checkbox" id="fake-toggle">
-    Use Fake Mode (debug)
-  </label>
-</div>
 
   <script type="module" src="script.js"></script>
 </body>
