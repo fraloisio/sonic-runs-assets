@@ -38,6 +38,12 @@ document.addEventListener("DOMContentLoaded", () => {
   const titleText = document.getElementById("title-text");
   const errorMessage = document.getElementById("error-message");
 
+  const showError = (err, context) => {
+    console.error(context, err);
+    errorMessage.textContent = err?.message || "Unknown error";
+    show(screenError);
+  };
+
   function show(screen) {
     screenUpload.classList.remove("active");
     screenLoading.classList.remove("active");
@@ -99,9 +105,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
       const uploaded = await client.upload(file);
 
-      const result = await client.predict("/pipeline_from_image", {
-        image: uploaded,
-      });
+      if (!uploaded) throw new Error("Upload failed: no file returned from client.upload");
+
+      // Use positional array to avoid param-name mismatches with the Space API
+      const result = await client.predict("/pipeline_from_image", [uploaded]);
 
       const [audioRes, metaRes] = result.data;
 
@@ -117,8 +124,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
       show(screenSuccess);
     } catch (err) {
-      errorMessage.textContent = err?.message || "Unknown error";
-      show(screenError);
+      showError(err, "Generation failed");
     }
   });
 
