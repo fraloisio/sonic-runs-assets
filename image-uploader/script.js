@@ -2,11 +2,16 @@ import { Client } from "https://cdn.jsdelivr.net/npm/@gradio/client/dist/index.m
 
 document.addEventListener("DOMContentLoaded", () => {
 
+  // ----------------------------------------------
+  // Fake mode toggle
+  // ----------------------------------------------
   const FAKE_MODE = false;
-
   const FAKE_AUDIO = "fake/fake-audio.mp3";
   const FAKE_METADATA = "fake/fake-metadata.txt";
 
+  // ----------------------------------------------
+  // DOM references
+  // ----------------------------------------------
   const screenUpload = document.getElementById("screen-upload");
   const screenLoading = document.getElementById("screen-loading");
   const screenSuccess = document.getElementById("screen-success");
@@ -22,6 +27,9 @@ document.addEventListener("DOMContentLoaded", () => {
   const outputImage = document.getElementById("output-image");
   const errorMessage = document.getElementById("error-message");
 
+  // ----------------------------------------------
+  // Screen switching helper
+  // ----------------------------------------------
   function show(screen) {
     screenUpload.classList.remove("active");
     screenLoading.classList.remove("active");
@@ -30,17 +38,29 @@ document.addEventListener("DOMContentLoaded", () => {
     screen.classList.add("active");
   }
 
+  // ----------------------------------------------
+  // Convert Gradio output → usable URL
+  // ----------------------------------------------
   function toUrl(x) {
     if (!x) return "";
+
     if (typeof x === "string") return x;
-    if (x.url) return x.url;
-    if (x.path) return x.path;
-    if (x.name) return x.name;
+    if (x.url && typeof x.url === "string") return x.url;
+    if (x.path && typeof x.path === "string") return x.path;
+    if (x.name && typeof x.name === "string") return x.name;
+
     if (x.data instanceof Blob) return URL.createObjectURL(x.data);
+    if (x.data?.url) return x.data.url;
+    if (x.data?.path) return x.data.path;
+
     return "";
   }
 
+  // ----------------------------------------------
+  // MAIN: Generate Audio
+  // ----------------------------------------------
   btnGenerate.addEventListener("click", async () => {
+
     const file = fileInput.files[0];
 
     if (!file) {
@@ -53,16 +73,16 @@ document.addEventListener("DOMContentLoaded", () => {
     if (FAKE_MODE) return runFakeMode(file);
 
     try {
-      const HF_SPACE = "Hope-and-Despair/Stable-Audio-freestyle-new-experiments";
-      const client = await Client.connect(HF_SPACE);
+      const client = await Client.connect(
+        "Hope-and-Despair/Stable-Audio-freestyle-new-experiments"
+      );
 
-      // SEND FILE DIRECTLY — NO upload(), NO size checks
       const result = await client.predict("/pipeline_from_image", {
         image: file,
       });
 
       if (!result || !result.data || result.data.length < 2) {
-        console.error("BAD RESULT FROM HF:", result);
+        console.error("BAD RESULT:", result);
         throw new Error("Invalid response from server.");
       }
 
@@ -70,7 +90,8 @@ document.addEventListener("DOMContentLoaded", () => {
       const metadataUrl = toUrl(result.data[1]);
 
       if (!audioUrl || !metadataUrl) {
-        throw new Error("Audio or metadata missing.");
+        console.error("BAD URL PARSE:", result);
+        throw new Error("Missing audio or metadata.");
       }
 
       outputImage.src = URL.createObjectURL(file);
@@ -82,19 +103,28 @@ document.addEventListener("DOMContentLoaded", () => {
 
     } catch (err) {
       console.error("GENERATION ERROR:", err);
-      errorMessage.textContent = err?.message || "Something went wrong.";
+      errorMessage.textContent =
+        err?.message || "Something went wrong. Try again.";
       show(screenError);
     }
   });
 
+  // ----------------------------------------------
+  // FAKE MODE
+  // ----------------------------------------------
   async function runFakeMode(file) {
     await new Promise((r) => setTimeout(r, 800));
+
     outputImage.src = URL.createObjectURL(file);
     audioPlayer.src = FAKE_AUDIO;
     metadataLink.href = FAKE_METADATA;
+
     show(screenSuccess);
   }
 
+  // ----------------------------------------------
+  // BACK BUTTONS
+  // ----------------------------------------------
   function resetUi() {
     outputImage.src = "";
     audioPlayer.src = "";
